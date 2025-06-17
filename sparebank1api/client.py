@@ -31,18 +31,30 @@ class SpareBank1API:
         self.transfers = TransfersAPI(self)
         self.child_accounts = ChildAccountsAPI(self)
 
-    def get(self, url: str, **kwargs):
+    def build_headers(self, additional_headers: Dict[str, str]) -> Dict[str, str]:
         if not self.ensure_token():
             raise
-        headers = kwargs.pop("headers", {})
-        headers["Authorization"] = f"Bearer {self.token['access_token']}"
-        return requests.get(f"{self.API_URL}/{url}", headers=headers, **kwargs)
+        headers = {
+            "Authorization": f"Bearer {self.token['access_token']}",
+            "User-Agent": "SpareBank1API/1.0",
+        }
+        if additional_headers:
+            headers.update(additional_headers)
+        return headers
 
-    def post(self, url: str, **kwargs):
-        self.ensure_token()
-        headers = kwargs.pop("headers", {})
-        headers["Authorization"] = f"Bearer {self.token['access_token']}"
-        return requests.post(f"{self.API_URL}/{url}", headers=headers, **kwargs)
+    def get(self, url: str, **kwargs) -> requests.Response:
+        headers = self.build_headers(kwargs.pop("headers", {}))
+        return requests.get(url, headers=headers, **kwargs)
+
+    def post(self, url: str, **kwargs) -> requests.Response:
+        headers = self.build_headers(kwargs.pop("headers", {}))
+        return requests.post(url, headers=headers, **kwargs)
+
+    def getApi(self, url: str, **kwargs) -> requests.Response:
+        return self.get(f"{self.API_URL}/{url}", **kwargs)
+
+    def postApi(self, url: str, **kwargs) -> requests.Response:
+        return self.post(f"{self.API_URL}/{url}", **kwargs)
 
     def authenticate(self):
         if exists("token.json"):
@@ -59,10 +71,17 @@ class SpareBank1API:
         redirect_response = input("Paste the full redirect URL here: ")
         self.fetch_token(redirect_response)
 
-    def set_token(self, token: Dict[str, Any]):
+    def set_token(self, response: requests.Response):
+        token = response.json()
+        expiry = response.headers.get("date")
+        expires_at = (
+            datetime.strptime(expiry, "%a, %d %b %Y %H:%M:%S GMT")
+            if expiry
+            else datetime.now()
+        )
         self.token = {
             "access_token": token.get("access_token"),
-            "expires_at": int(token.get("expires_in", 0)) + int(time()),
+            "expires_at": int(token.get("expires_in", 0)) + int(expires_at.timestamp()),
             "refresh_token": token.get("refresh_token"),
         }
         print(
@@ -98,33 +117,33 @@ class SpareBank1API:
             raise ValueError("Missing code or state in authorization response.")
         if state != self._last_state:
             raise ValueError("State mismatch. Possible CSRF attack.")
-        data = {
-            "grant_type": "authorization_code",
-            "code": code,
-            "redirect_uri": self.config.redirect_uri,
-            "client_id": self.config.client_id,
-            "client_secret": self.config.client_secret,
-        }
-        response = requests.post(self.TOKEN_URL, data=data)
-        response.raise_for_status()
-        self.set_token(response.json())
-
-    def refresh_token(self, refresh_token):
-        data = {
-            "client_id": self.config.client_id,
-            "client_secret": self.config.client_secret,
-            "refresh_token": refresh_token,
-            "grant_type": "refresh_token",
-        }
         response = requests.post(
             self.TOKEN_URL,
-            data=data,
-            headers={"Content-Type": "application/x-www-form-urlencoded"},
+            data={
+                "grant_type": "authorization_code",
+                "code": code,
+                "redirect_uri": self.config.redirect_uri,
+                "client_id": self.config.client_id,
+                "client_secret": self.config.client_secret,
+            },
         )
         response.raise_for_status()
-        self.set_token(response.json())
+        self.set_token(response)
 
-    def ensure_token(self, minimum_expire_time=60) -> bool:
+    def refresh_token(self):
+        response = requests.post(
+            self.TOKEN_URL,
+            data={
+                "client_id": self.config.client_id,
+                "client_secret": self.config.client_secret,
+                "refresh_token": self.token.get("refresh_token"),
+                "grant_type": "refresh_token",
+            },
+        )
+        response.raise_for_status()
+        self.set_token(response)
+
+    def ensure_token(self, refresh_threshold=60) -> bool:
         """Check if the current token is valid."""
         if (
             not self.token
@@ -133,8 +152,8 @@ class SpareBank1API:
         ):
             raise Exception("Not authenticated. Please authenticate first.")
 
-        if int(time()) >= self.token["expires_at"] - minimum_expire_time:
-            self.refresh_token(self.token.get("refresh_token"))
+        if int(time()) >= self.token["expires_at"] - refresh_threshold:
+            self.refresh_token()
             if not self.token or "access_token" not in self.token:
                 raise Exception("Failed to refresh token. Please re-authenticate.")
 

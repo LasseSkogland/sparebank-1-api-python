@@ -34,7 +34,7 @@ class TransactionsAPI:
             params.append(
                 ("enrichWithPaymentDetails", str(enrich_with_payment_details).lower())
             )
-        response = self.api.get(
+        response = self.api.getApi(
             "transactions", params=params, headers={"Accept": self.API_VERSION}
         )
         if not response.ok:
@@ -43,7 +43,7 @@ class TransactionsAPI:
 
     def export_transactions_to_csv(self, account_key, from_date, to_date):
         """GET /transactions/export - Exports booked transactions to CSV for a given period"""
-        response = self.api.get(
+        response = self.api.getApi(
             "transactions/export",
             params={
                 "accountKey": account_key,
@@ -86,7 +86,7 @@ class TransactionsAPI:
             params.append(
                 ("enrichWithMerchantLogo", str(enrich_with_merchant_logo).lower())
             )
-        response = self.api.get(
+        response = self.api.getApi(
             "transactions/classified",
             params=params,
             headers={"Accept": self.API_VERSION},
@@ -96,7 +96,7 @@ class TransactionsAPI:
         return response.json()
 
     def get_transaction_details(self, transaction_id):
-        response = self.api.get(
+        response = self.api.getApi(
             f"transactions/{transaction_id}/details",
             headers={"Accept": self.API_VERSION},
         )
@@ -107,7 +107,7 @@ class TransactionsAPI:
     def get_classified_transaction_details(
         self, transaction_id, enrich_with_merchant_data=None
     ):
-        response = self.api.get(
+        response = self.api.getApi(
             f"transactions/{transaction_id}/details/classified",
             params=(
                 enrich_with_merchant_data is not None

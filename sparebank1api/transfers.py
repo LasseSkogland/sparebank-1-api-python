@@ -16,7 +16,7 @@ class TransfersAPI:
         credit_card_account_id: str,
         due_date: date = date.today(),
     ):
-        response = self.api.post(
+        response = self.api.postApi(
             "transfer/creditcard/transferTo",
             json={
                 "amount": amount,
@@ -49,7 +49,7 @@ class TransfersAPI:
         }
         if message:
             data["message"] = message
-        response = self.api.post(
+        response = self.api.postApi(
             "transfer/debit",
             json=data,
             headers={"Content-Type": self.API_VERSION, "Accept": self.API_VERSION},
@@ -65,7 +65,7 @@ class TransfersAPI:
         policy_number: str,
         due_date: date = date.today(),
     ):
-        response = self.api.post(
+        response = self.api.postApi(
             "transfer/pension",
             json={
                 "amount": str(amount),

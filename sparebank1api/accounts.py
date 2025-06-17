@@ -19,7 +19,7 @@ class AccountsAPI:
         include_ask_accounts=False,
         include_pension_accounts=False,
     ) -> list[dict[str, Any]]:
-        response = self.api.get(
+        response = self.api.getApi(
             "accounts",
             params={
                 "includeNokAccounts": include_nok_accounts,
@@ -36,7 +36,7 @@ class AccountsAPI:
         return response.json().get("accounts", [])
 
     def get_account_keys(self, account_numbers: list[str]):
-        response = self.api.get(
+        response = self.api.getApi(
             "accounts/keys",
             params=[("accountNumber", n) for n in account_numbers],
             headers={"Accept": self.API_VERSION},
@@ -46,7 +46,7 @@ class AccountsAPI:
         return response.json()
 
     def get_account_balance(self, account_number: str):
-        response = self.api.post(
+        response = self.api.postApi(
             "accounts/balance",
             json={"accountNumber": account_number},
             headers={"Content-Type": self.API_VERSION, "Accept": self.API_VERSION},
@@ -56,7 +56,7 @@ class AccountsAPI:
         return response.json()
 
     def get_default_account(self):
-        response = self.api.get(
+        response = self.api.getApi(
             "accounts/default", headers={"Accept": self.API_VERSION}
         )
         if not response.ok:
@@ -64,7 +64,7 @@ class AccountsAPI:
         return response.json()
 
     def get_account(self, account_key):
-        response = self.api.get(
+        response = self.api.getApi(
             f"accounts/{account_key}", headers={"Accept": self.API_VERSION}
         )
         if not response.ok:
@@ -72,7 +72,7 @@ class AccountsAPI:
         return response.json()
 
     def get_account_roles(self, account_key):
-        response = self.api.get(
+        response = self.api.getApi(
             f"accounts/{account_key}/roles", headers={"Accept": self.API_VERSION}
         )
         if not response.ok:
@@ -80,7 +80,7 @@ class AccountsAPI:
         return response.json()
 
     def get_account_details(self, account_key):
-        response = self.api.get(
+        response = self.api.getApi(
             f"accounts/{account_key}/details", headers={"Accept": self.API_VERSION}
         )
         if not response.ok:
